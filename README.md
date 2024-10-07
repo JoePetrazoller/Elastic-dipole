@@ -1,7 +1,7 @@
 # Elastic dipole calculation with LAMMPS
 
 ## Goal
-The goal of this code is to evaluate the elastic dipole $P_{ij}^0 $of one substitutional solute atom
+The goal of this code is to evaluate the elastic dipole $P_{ij}^0$ of one substitutional solute atom
 
 ## Elastic dipole
 

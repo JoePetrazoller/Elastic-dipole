@@ -1,0 +1,64 @@
+#Created the 2024.10.07
+#Author : Joé Petrazoller, LEM3, Metz, France : joe.petrazoller@univ-lorraine.fr
+units           metal
+boundary        p p p
+lattice fcc 4.16053990854323 #lattice parameter of the solvant (in Angstrom)
+region BOITE block 0 15 0 15 0 15 units lattice #At least 12 x 12 x 12 to avoid image effect due to periodic boundary conditions
+create_box 2 BOITE
+create_atoms 1 box
+pair_style      eam/fs
+pair_coeff      * * AgNi.eam.fs Ag Ni
+thermo          10
+thermo_style    custom step pe ke press pxx pyy pzz pxy pxz pyz vol lx lz ly fnorm
+variable	a equal atoms
+variable	pxx equal pxx
+variable	pyy equal pyy
+variable	pzz equal pzz
+variable	pxy equal pxy
+variable	pxz equal pxz
+variable	pyz equal pyz
+variable    volume equal vol
+compute stress all stress/atom NULL #To compute stresses
+compute voro all voronoi/atom 
+#____________________________ RELAX BOX WITHOUT SOLUTE ___________________________
+fix 1 all box/relax aniso 0.0
+dump RESULTS1 all custom 1 Step1.atom id type x y z c_stress[1] c_stress[2] c_stress[3] c_stress[4] c_stress[5] c_stress[6] c_voro[1]
+min_style cg
+minimize        1e-10 1e-10 100000 100000
+variable pxx0 equal ${pxx}
+variable pyy0 equal ${pyy}
+variable pzz0 equal ${pzz}
+variable pxy0 equal ${pxy}
+variable pxz0 equal ${pxz}
+variable pyz0 equal ${pyz}
+undump RESULTS1
+#____________________________ RELAX BOX WITH SOLUTE _______________________________
+set atom 1000 type 2 #adding subsitutional solute (replace the atom ID 1000 by an atom type 2 (can be any atom ID but it won't change the result))
+unfix 1 
+dump RESULTS2 all custom 1 Step2.atom id type x y z c_stress[1] c_stress[2] c_stress[3] c_stress[4] c_stress[5] c_stress[6] c_voro[1]
+min_style cg
+minimize        1e-10 1e-10 100000 100000
+variable pxx1 equal ${pxx}
+variable pyy1 equal ${pyy}
+variable pzz1 equal ${pzz}
+variable pxy1 equal ${pxy}
+variable pxz1 equal ${pxz}
+variable pyz1 equal ${pyz}
+#_____________________________ COMPUTING THE ELASTIC DIPOLE _______________________________
+variable volume1 equal ${volume}*10^-30 #m3
+#P*V, but P needs to be in Pascal (bars actually). Elastic dipole in Joule, divide by 1.6e-19 to go in eV. So, divide by 1.6e-24 to include the conversion in Pascal.
+variable pxx2 equal ((${pxx1}-${pxx0})*${volume1}/(1.602176634*10^-(24)))
+variable pyy2 equal ((${pyy1}-${pyy0})*${volume1}/(1.602176634*10^-(24)))
+variable pzz2 equal ((${pzz1}-${pzz0})*${volume1}/(1.602176634*10^-(24)))
+variable pxy2 equal ((${pxy1}-${pxy0})*${volume1}/(1.602176634*10^-(24)))
+variable pxz2 equal ((${pxz1}-${pxz0})*${volume1}/(1.602176634*10^-(24)))
+variable pyz2 equal ((${pyz1}-${pyz0})*${volume1}/(1.602176634*10^-(24)))
+#_____________________________ WRITING DOWN ELASTIC DIPOLE TENSOR ON A .TXT FILE  _______________________________
+print "pxx ${pxx2} eV" append Elastic_dipole_values.txt
+print "pyy ${pyy2} eV" append Elastic_dipole_values.txt
+print "pzz ${pzz2} eV" append Elastic_dipole_values.txt
+print "pxy ${pxy2} eV" append Elastic_dipole_values.txt
+print "pxz ${pxz2} eV" append Elastic_dipole_values.txt
+print "pyz ${pyz2} eV" append Elastic_dipole_values.txt
+variable volume1 equal ${volume1}/10^-30 #A^3
+print "volume ${volume1} A^3" append Elastic_dipole_values.txt
